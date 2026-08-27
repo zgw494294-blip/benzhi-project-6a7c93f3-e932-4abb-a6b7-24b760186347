@@ -17,6 +17,11 @@ type IdempotencyResult struct {
 	StatusCode int
 }
 
+func (s *Store) ReserveIdempotency(ctx context.Context, key, fingerprint string) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO idempotency_records(idempotency_key,request_fingerprint,response,status_code,created_at) VALUES(?,?,?,?,?)`, key, fingerprint, []byte{}, 0, stamp(time.Now().UTC()))
+	return err
+}
+
 func RequestFingerprint(method, path string, body []byte) string {
 	sum := sha256.Sum256(append(append([]byte(method+"\n"+path+"\n"), body...), '\n'))
 	return hex.EncodeToString(sum[:])
@@ -40,6 +45,6 @@ func (s *Store) LookupIdempotency(ctx context.Context, key, fingerprint string) 
 }
 
 func (s *Store) SaveIdempotency(ctx context.Context, key, fingerprint string, response []byte, status int) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO idempotency_records(idempotency_key,request_fingerprint,response,status_code,created_at) VALUES(?,?,?,?,?)`, key, fingerprint, response, status, stamp(time.Now().UTC()))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO idempotency_records(idempotency_key,request_fingerprint,response,status_code,created_at) VALUES(?,?,?,?,?) ON CONFLICT(idempotency_key) DO UPDATE SET response=excluded.response,status_code=excluded.status_code WHERE request_fingerprint=excluded.request_fingerprint`, key, fingerprint, response, status, stamp(time.Now().UTC()))
 	return err
 }

@@ -101,6 +101,10 @@ func (s *Server) idempotent(w http.ResponseWriter, r *http.Request, body []byte,
 		_, _ = w.Write(cached.Response)
 		return
 	}
+	if err = s.workflow.Store().ReserveIdempotency(r.Context(), key, fingerprint); err != nil {
+		mapError(w, err, 0)
+		return
+	}
 	value, status, err := action()
 	if err != nil {
 		version := int64(0)
