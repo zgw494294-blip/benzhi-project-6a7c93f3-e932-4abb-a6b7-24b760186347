@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"mural-conservation-gate/internal/domain"
@@ -14,15 +15,22 @@ import (
 )
 
 type Service struct {
-	store *store.Store
-	eval  *evaluation.Evaluator
-	locks *caseLocks
-	now   func() time.Time
+	store             *store.Store
+	eval              *evaluation.Evaluator
+	locks             *caseLocks
+	now               func() time.Time
+	comparisonMu      sync.RWMutex
+	comparisonResults map[comparisonCacheKey]domain.CandidateComparisonSet
+}
+
+type comparisonCacheKey struct {
+	caseID  string
+	version int64
 }
 
 func New(s *store.Store) *Service {
 	now := func() time.Time { return time.Now().UTC() }
-	service := &Service{store: s, locks: newCaseLocks(), now: now}
+	service := &Service{store: s, locks: newCaseLocks(), now: now, comparisonResults: map[comparisonCacheKey]domain.CandidateComparisonSet{}}
 	service.eval = evaluation.New(now, newID)
 	return service
 }
@@ -84,7 +92,18 @@ func (s *Service) CandidateComparisons(ctx context.Context, caseID string) (doma
 	if err != nil {
 		return domain.CandidateComparisonSet{}, err
 	}
-	return evaluation.CompareCandidates(view), nil
+	key := comparisonCacheKey{caseID: caseID, version: view.Case.Version}
+	s.comparisonMu.RLock()
+	result, ok := s.comparisonResults[key]
+	s.comparisonMu.RUnlock()
+	if ok {
+		return result, nil
+	}
+	result = evaluation.CompareCandidates(view)
+	s.comparisonMu.Lock()
+	s.comparisonResults[key] = result
+	s.comparisonMu.Unlock()
+	return result, nil
 }
 
 func (s *Service) Audit(ctx context.Context, caseID string) ([]domain.AuditEvent, error) {
