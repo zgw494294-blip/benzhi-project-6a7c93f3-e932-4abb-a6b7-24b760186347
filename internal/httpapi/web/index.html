@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="壁画清洗试验风险治理与施工许可工作台">
+  <title>壁画清洗许可门</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="masthead">
+    <div><p class="eyebrow">MURAL CONSERVATION GATE</p><h1>壁画清洗许可门</h1></div>
+    <div class="health"><span id="health-dot"></span><span id="health-text">正在检查服务</span></div>
+  </header>
+  <main>
+    <section class="hero">
+      <div><p class="kicker">现场治理工作台</p><h2>让每一次清洗扩大，都有证据可循。</h2><p>从病害基线、分区试验到风险整改与签发验真，将材料安全判断收束为不可变的许可链路。</p></div>
+      <aside><span>当前案卷</span><strong id="case-label">尚未建档</strong><small id="case-state">DRAFT · v0</small></aside>
+    </section>
+    <nav class="steps" aria-label="业务阶段">
+      <button data-jump="case-panel">01 建档</button><button data-jump="baseline-panel">02 基线</button><button data-jump="zone-panel">03 分区</button><button data-jump="protocol-panel">04 方案</button><button data-jump="observation-panel">05 观察</button><button data-jump="freeze-panel">06 复核</button><button data-jump="permit-panel">07 许可</button>
+    </nav>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <section class="workspace">
+      <div class="forms">
+        <article class="panel active"><header><span>队列</span><div><h3>案卷工作队列</h3><p>按阶段与现场名称查找案卷，选择后继续使用下方原详情和审计时间线。</p></div></header>
+          <form id="queue-form"><div class="grid"><label>案卷状态<select name="status"><option value="">全部状态</option><option value="draft">草拟</option><option value="testing">试验中</option><option value="remediation">整改中</option><option value="review">待复核</option><option value="frozen">已冻结</option><option value="permitted">已许可</option></select></label><label>名称或空间位置<input name="keyword" placeholder="留空表示全部"></label><label>每页数量<input name="limit" type="number" min="1" max="100" value="10"></label></div><button type="submit">查询案卷</button><button id="queue-next" type="button" hidden>下一页</button></form><div id="queue-results" class="empty">正在读取案卷队列…</div>
+        </article>
+        <article id="case-panel" class="panel active"><header><span>01</span><div><h3>建立保护作业案</h3><p>登记空间、材质、病害和现场环境。</p></div></header>
+          <form id="case-form"><div class="grid"><label>建筑 / 遗址名称<input name="siteName" required value="永宁寺壁画修复现场"></label><label>壁画空间位置<input name="muralLocation" required value="东壁第三开间下层"></label><label>材质层（逗号分隔）<input name="materialLayers" required value="地仗层,颜料层,历史保护层"></label><label>病害（逗号分隔）<input name="pathologies" required value="烟熏,起甲,盐析"></label><label>温度 °C<input name="temperatureC" type="number" step="0.1" value="21"></label><label>湿度 %<input name="humidityPercent" type="number" step="0.1" value="52"></label><label>照度 lux<input name="lightLux" type="number" step="0.1" value="85"></label><label>建档人<input name="actorId" value="engineer-01" required></label></div><button type="submit">建立案卷</button></form>
+        </article>
+        <article id="baseline-panel" class="panel"><header><span>02</span><div><h3>提交病害基线</h3><p>基线完整前，试验设计保持阻断。</p></div></header>
+          <form id="baseline-form"><div class="grid"><label>L*<input name="colorL" type="number" step="0.01" value="52"></label><label>a*<input name="colorA" type="number" step="0.01" value="8"></label><label>b*<input name="colorB" type="number" step="0.01" value="12"></label><label>含水率 %<input name="moisturePercent" type="number" step="0.01" value="4"></label><label>残留基线<input name="residueBaseline" type="number" step="0.01" value="0.2"></label><label>颗粒状态<input name="particleCondition" value="局部轻微粉化，边缘稳定"></label><label>测量人员<input name="measuredBy" value="engineer-01"></label><label>复测原因<input name="reason" placeholder="首次基线可留空；复测必填"></label></div><button type="submit">提交不可变基线版本</button></form>
+        </article>
+        <article id="zone-panel" class="panel"><header><span>03</span><div><h3>划定试验与对照分区</h3><p>先建对照区，再建不重叠的试验区。</p></div></header>
+          <form id="zone-form"><div class="grid"><label>分区类型<select name="zoneType"><option value="control">对照区</option><option value="trial">试验区</option></select></label><label>边界坐标 JSON<input name="boundaryPoints" value='[{"x":0,"y":0},{"x":10,"y":0},{"x":10,"y":10},{"x":0,"y":10}]'></label><label>面积 cm²<input name="areaCm2" type="number" step="0.1" value="100"></label><label>代表性理由<input name="representativeReason" value="覆盖典型烟熏与稳定颜料层"></label><label>对照区 ID<input id="control-zone" name="controlZoneId" placeholder="试验区必填"></label><label>操作人<input name="actorId" value="engineer-01"></label></div><button type="submit">保存分区</button></form>
+        </article>
+        <article id="protocol-panel" class="panel"><header><span>04</span><div><h3>编制候选清洗方案</h3><p>每次修订保留完整、不可变历史。</p></div></header>
+          <form id="protocol-form"><div class="grid"><label>候选方案 ID<input name="protocolId" value="protocol-a"></label><label>材料名称<input name="ingredient" value="去离子水凝胶"></label><label>材料占比 %<input name="percentage" type="number" step="0.1" value="95"></label><label>浓度 %<input name="concentration" type="number" step="0.1" value="5"></label><label>接触时长（秒）<input name="contactSeconds" type="number" value="30"></label><label>工具<input name="tools" value="棉签,吸水纸"></label><label>清除步骤<input name="removalSteps" value="点涂,计时,吸除,复测"></label><label>修订原因<input name="changeReason" value="首版试验参数"></label><label>编制人<input name="createdBy" value="engineer-01"></label><label>最大色差 ΔE<input name="maxColorDeltaE" type="number" step="0.1" value="3"></label><label>最大颗粒脱落<input name="maxParticleLossScore" type="number" step="0.1" value="1.5"></label><label>最大含水率 %<input name="maxMoisturePercent" type="number" step="0.1" value="10"></label><label>最大残留<input name="maxResidueValue" type="number" step="0.1" value="2"></label><label>最大对照偏差<input name="maxControlDifference" type="number" step="0.1" value="2"></label></div><button type="submit">保存方案修订</button></form>
+        </article>
+        <article id="observation-panel" class="panel"><header><span>05</span><div><h3>登记试验观察</h3><p>轮次提交后不可改写；请先登记对照区同轮证据。</p></div></header>
+          <form id="observation-form"><div class="grid"><label>分区 ID<input id="observation-zone" name="zoneId"></label><label>方案修订 ID<input id="observation-protocol" name="protocolRevisionId"></label><label>轮次<input name="roundNo" type="number" value="1"></label><label>色差 ΔE<input name="colorDeltaE" type="number" step="0.01" value="1.1"></label><label>颗粒脱落评分<input name="particleLossScore" type="number" step="0.01" value="0.4"></label><label>含水率 %<input name="moisturePercent" type="number" step="0.01" value="4.5"></label><label>残留指标<input name="residueValue" type="number" step="0.01" value="0.6"></label><label>证据校验值<input name="evidenceDigest" value="现场照片与测量表摘要-001"></label><label>证据摘要<input name="evidenceSummary" value="D65 光源复测，表面无可见扰动"></label><label>试验人员<input name="operatorId" value="engineer-01"></label></div><button type="submit">提交不可变观察</button></form>
+          <h3>成对批量录入</h3><form id="paired-form"><div class="grid"><label>对照区 ID<input id="paired-control" name="controlZoneId"></label><label>试验区 ID（逗号分隔）<input id="paired-trials" name="trialZoneIds"></label><label>方案修订 ID<input id="paired-protocol" name="protocolRevisionId"></label><label>轮次<input name="roundNo" type="number" value="1"></label><label>对照色差 / 试验色差<input name="colorValues" value="0.3,1.1"></label><label>对照颗粒 / 试验颗粒<input name="particleValues" value="0.1,0.4"></label><label>对照含水 / 试验含水<input name="moistureValues" value="4.1,4.5"></label><label>对照残留 / 试验残留<input name="residueValues" value="0.2,0.6"></label><label>试验人员<input name="operatorId" value="engineer-01"></label></div><button type="submit">原子提交成对观察</button></form>
+        </article>
+        <article class="panel"><header><span>整改</span><div><h3>风险整改任务</h3><p>登记责任人、参数目标和必须完成成对复验的试验区；销项仅由目标规则复验通过触发。</p></div></header><form id="remediation-form"><div class="grid"><label>风险发现 ID<input name="findingId"></label><label>责任人<input name="assignee" value="engineer-01"></label><label>问题分析<input name="analysis"></label><label>计划浓度 %<input name="concentration" type="number" step="0.1"></label><label>计划接触时长（秒）<input name="contactSeconds" type="number"></label><label>要求复验试验区 ID<input name="requiredZoneIds"></label><label>最晚完成天数<input name="dueDays" type="number" value="7"></label><label>操作人<input name="actorId" value="engineer-01"></label></div><button type="submit">建立或更新整改任务</button></form><h3>整改工作队列</h3><form id="remediation-queue-form"><div class="grid"><label>责任人<input name="assignee"></label><label>严重度<select name="severity"><option value="">全部</option><option value="blocking">阻断</option><option value="warning">警告</option></select></label><label>仅看逾期<select name="overdue"><option value="false">否</option><option value="true">是</option></select></label></div><button type="submit">查询整改队列</button></form><div id="remediation-queue-results" class="empty">等待查询。</div></article>
+        <article id="freeze-panel" class="panel"><header><span>06</span><div><h3>复核与冻结</h3><p>仅当证据完整、风险闭环时冻结唯一方案。</p></div></header>
+          <div id="candidate-results" class="empty">等待候选方案成对证据。</div><form id="selection-form"><div class="grid"><label>入围方案修订 ID<input id="selection-protocol" name="protocolRevisionId"></label><label>复核员<input name="reviewerId" value="reviewer-01"></label><label class="wide">比选理由<textarea name="reason">成对证据覆盖完整，阈值裕量与风险闭环优于其他候选。</textarea></label></div><button type="submit">指定唯一入围方案</button></form>
+          <form id="freeze-form"><div class="grid"><label>获选方案修订 ID<input id="freeze-protocol" name="protocolRevisionId"></label><label>复核员<input name="reviewerId" value="reviewer-01"></label><label class="wide">复核意见<textarea name="reviewNote">已核对试验与对照证据，全部阻断项闭环。</textarea></label></div><button type="submit">批准并冻结</button></form>
+        </article>
+        <article id="permit-panel" class="panel"><header><span>07</span><div><h3>签发施工许可</h3><p>从冻结清单生成唯一编号和校验摘要。</p></div></header>
+          <form id="permit-form"><div class="grid"><label class="wide">适用范围<textarea name="scope">东壁第三开间已验证病害类型的正式清洗作业面</textarea></label><label class="wide">限制条件（每行一项）<textarea name="restrictions">接触时长不得超过冻结参数
+每 2 平方米复测含水率</textarea></label><label>项目负责人<input name="issuedBy" value="manager-01"></label><label>有效天数<input name="days" type="number" value="30"></label></div><button type="submit">签发正式许可</button></form>
+          <form id="verify-form" class="verify"><label>许可编号<input id="permit-number" name="permitNumber"></label><button type="submit">独立验真</button><button id="receipt-download" type="button" hidden>下载 JSON 回执</button></form><div id="verification-results"></div>
+        </article>
+      </div>
+      <aside class="evidence"><div class="evidence-head"><div><span>案卷证据</span><h3>实时快照</h3></div><button id="refresh" type="button">刷新</button></div><div id="summary" class="empty">建立案卷后，这里将呈现版本、分区、观察、风险与许可。</div><div id="timeline"></div></aside>
+    </section>
+  </main>
+  <footer>本工作台仅在全部试验依据通过复核后允许扩大施工。</footer>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
