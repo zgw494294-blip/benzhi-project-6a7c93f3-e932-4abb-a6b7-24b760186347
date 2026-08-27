@@ -4,10 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+var persistentPools = struct {
+	sync.Mutex
+	values map[string]*sql.DB
+}{values: map[string]*sql.DB{}}
 
 type Store struct {
 	db *sql.DB
@@ -17,6 +23,12 @@ func Open(path string) (*Store, error) {
 	dsn := path
 	if path == ":memory:" {
 		dsn = "file:muralgate?mode=memory&cache=shared"
+	} else {
+		persistentPools.Lock()
+		defer persistentPools.Unlock()
+		if cached := persistentPools.values[dsn]; cached != nil {
+			return &Store{db: cached}, nil
+		}
 	}
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -29,6 +41,9 @@ func Open(path string) (*Store, error) {
 	if _, err = db.ExecContext(ctx, schema); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("执行数据库迁移: %w", err)
+	}
+	if path != ":memory:" {
+		persistentPools.values[dsn] = db
 	}
 	return &Store{db: db}, nil
 }
