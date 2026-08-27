@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"mural-conservation-gate/internal/domain"
@@ -73,29 +74,41 @@ func (s *Service) ListCases(ctx context.Context, query ListCasesQuery) (domain.C
 			queue.StatusCounts[status] = 0
 		}
 	}
-	for _, c := range result.Cases {
-		view, loadErr := s.GetCase(ctx, c.CaseID)
+	if len(result.Cases) < 8 {
+		for _, c := range result.Cases {
+			summary, loadErr := s.caseQueueSummary(ctx, c)
+			if loadErr != nil {
+				return queue, loadErr
+			}
+			queue.Items = append(queue.Items, summary)
+		}
+	} else {
+		ready := make(chan struct{}, len(result.Cases))
+		release := make(chan struct{})
+		var workers sync.WaitGroup
+		var loadErr error
+		for _, c := range result.Cases {
+			workers.Add(1)
+			go func(item domain.ConservationCase) {
+				defer workers.Done()
+				summary, err := s.caseQueueSummary(ctx, item)
+				ready <- struct{}{}
+				<-release
+				if err != nil {
+					loadErr = err
+					return
+				}
+				queue.Items = append(queue.Items, summary)
+			}(c)
+		}
+		for range result.Cases {
+			<-ready
+		}
+		close(release)
+		workers.Wait()
 		if loadErr != nil {
 			return queue, loadErr
 		}
-		summary := domain.CaseQueueSummary{Case: view.Case, Readiness: view.Readiness, MissingEvidence: domain.MissingEvidence(view.Readiness)}
-		if view.Baseline != nil {
-			summary.CurrentRevision = view.Baseline.RevisionNo
-		}
-		for _, f := range view.Findings {
-			if !f.Historical && f.Status == domain.FindingOpen && f.Severity == domain.SeverityBlocking {
-				summary.OpenBlockers++
-			}
-		}
-		if view.Permit != nil {
-			expiry := view.Permit.ExpiresAt
-			summary.PermitExpiresAt = &expiry
-			summary.PermitValidity = permitValidity(*view.Permit, s.now())
-			if view.Manifest == nil || domain.PermitVerificationDigest(*view.Permit) != view.Permit.VerificationDigest || view.Permit.EvidenceManifestDigest != view.Manifest.Digest || view.Permit.FrozenProtocolRevisionID != view.Manifest.ProtocolRevisionID {
-				summary.PermitValidity = domain.PermitMismatch
-			}
-		}
-		queue.Items = append(queue.Items, summary)
 	}
 	if hasMore && len(queue.Items) > 0 {
 		last := queue.Items[len(queue.Items)-1].Case
@@ -103,6 +116,31 @@ func (s *Service) ListCases(ctx context.Context, query ListCasesQuery) (domain.C
 		queue.NextCursor = base64.RawURLEncoding.EncodeToString(data)
 	}
 	return queue, nil
+}
+
+func (s *Service) caseQueueSummary(ctx context.Context, c domain.ConservationCase) (domain.CaseQueueSummary, error) {
+	view, err := s.GetCase(ctx, c.CaseID)
+	if err != nil {
+		return domain.CaseQueueSummary{}, err
+	}
+	summary := domain.CaseQueueSummary{Case: view.Case, Readiness: view.Readiness, MissingEvidence: domain.MissingEvidence(view.Readiness)}
+	if view.Baseline != nil {
+		summary.CurrentRevision = view.Baseline.RevisionNo
+	}
+	for _, finding := range view.Findings {
+		if !finding.Historical && finding.Status == domain.FindingOpen && finding.Severity == domain.SeverityBlocking {
+			summary.OpenBlockers++
+		}
+	}
+	if view.Permit != nil {
+		expiry := view.Permit.ExpiresAt
+		summary.PermitExpiresAt = &expiry
+		summary.PermitValidity = permitValidity(*view.Permit, s.now())
+		if view.Manifest == nil || domain.PermitVerificationDigest(*view.Permit) != view.Permit.VerificationDigest || view.Permit.EvidenceManifestDigest != view.Manifest.Digest || view.Permit.FrozenProtocolRevisionID != view.Manifest.ProtocolRevisionID {
+			summary.PermitValidity = domain.PermitMismatch
+		}
+	}
+	return summary, nil
 }
 
 func permitValidity(permit domain.WorkPermit, now time.Time) domain.PermitValidity {
