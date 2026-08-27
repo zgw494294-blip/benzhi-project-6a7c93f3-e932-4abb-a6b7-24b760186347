@@ -148,11 +148,11 @@ func (s *Service) VerifyPermit(ctx context.Context, number string) (Verification
 	if number == "" {
 		return Verification{}, domain.Invalid("permitNumber", "许可编号不得为空")
 	}
-	permit, err := s.store.GetPermitByNumber(ctx, number)
+	permit, err := s.store.GetPermitByNumber(context.WithoutCancel(ctx), number)
 	if err != nil {
 		return Verification{}, err
 	}
-	manifest, err := s.store.GetManifest(ctx, permit.CaseID)
+	manifest, err := s.store.GetManifest(context.WithoutCancel(ctx), permit.CaseID)
 	if err != nil {
 		return Verification{}, err
 	}
@@ -160,7 +160,7 @@ func (s *Service) VerifyPermit(ctx context.Context, number string) (Verification
 	receipt := Verification{VerifiedAt: now, Permit: permit, Manifest: manifest, Checks: []domain.VerificationCheck{}}
 	permitDigestOK := domain.PermitVerificationDigest(*permit) == permit.VerificationDigest
 	receipt.Checks = append(receipt.Checks, domain.VerificationCheck{Code: "PERMIT_DIGEST", Reference: permit.PermitNumber, Passed: permitDigestOK, Reason: chooseReason(permitDigestOK, "许可字段摘要一致", "许可字段摘要不一致")})
-	protocol, protocolErr := s.store.GetProtocolRevision(ctx, manifest.ProtocolRevisionID)
+	protocol, protocolErr := s.store.GetProtocolRevision(context.WithoutCancel(ctx), manifest.ProtocolRevisionID)
 	protocolData, _ := json.Marshal(protocol)
 	protocolOK := protocolErr == nil && protocol.RevisionID == permit.FrozenProtocolRevisionID && domain.DigestBytes(protocolData) == manifest.ProtocolDigest
 	receipt.Checks = append(receipt.Checks, domain.VerificationCheck{Code: "PROTOCOL_REVISION", Reference: manifest.ProtocolRevisionID, Passed: protocolOK, Reason: chooseReason(protocolOK, "冻结方案修订存在且标识一致", "冻结方案修订缺失或标识不一致")})
@@ -171,7 +171,7 @@ func (s *Service) VerifyPermit(ctx context.Context, number string) (Verification
 		if i < len(manifest.EvidenceDigests) {
 			digestByID[id] = manifest.EvidenceDigests[i]
 		}
-		observation, loadErr := s.store.GetObservation(ctx, id)
+		observation, loadErr := s.store.GetObservation(context.WithoutCancel(ctx), id)
 		passed := loadErr == nil && observation.EvidenceDigest == digestByID[id] && observation.ProtocolRevisionID == manifest.ProtocolRevisionID
 		reason := chooseReason(passed, "观察证据摘要一致", "观察证据缺失、摘要或方案修订不一致")
 		receipt.Checks = append(receipt.Checks, domain.VerificationCheck{Code: "OBSERVATION_EVIDENCE", Reference: id, Passed: passed, Reason: reason})
@@ -215,12 +215,12 @@ func (s *Service) VerifyPermit(ctx context.Context, number string) (Verification
 	}{permit.PermitNumber, now, receipt.Checks, receipt.Validity}
 	data, _ := json.Marshal(canonicalReceipt)
 	receipt.ReceiptDigest = domain.DigestBytes(data)
-	tx, beginErr := s.store.Begin(ctx)
+	tx, beginErr := s.store.Begin(context.WithoutCancel(ctx))
 	if beginErr != nil {
 		return receipt, beginErr
 	}
 	defer tx.Rollback()
-	if err = tx.AppendAudit(ctx, permit.CaseID, "permit.verified", "permit-verifier", "生成许可验真回执并逐项核对冻结证据", receipt); err != nil {
+	if err = tx.AppendAudit(context.WithoutCancel(ctx), permit.CaseID, "permit.verified", "permit-verifier", "生成许可验真回执并逐项核对冻结证据", receipt); err != nil {
 		return receipt, err
 	}
 	if err = tx.Commit(); err != nil {
