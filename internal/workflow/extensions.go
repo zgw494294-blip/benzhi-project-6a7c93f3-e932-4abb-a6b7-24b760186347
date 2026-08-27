@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"mural-conservation-gate/internal/domain"
@@ -338,9 +339,28 @@ func (s *Service) SubmitPairedObservations(ctx context.Context, caseID string, c
 		history = append(history, observations[0])
 		snapshots := map[string]domain.EvaluationSnapshot{}
 		hasCurrentBlockers := false
-		for _, observation := range observations[1:] {
-			result := s.eval.Evaluate(evaluation.Input{Case: view.Case, Baseline: *view.Baseline, Protocol: protocol, Current: observation, History: history, Controls: []domain.TrialObservation{observations[0]}, OpenFindings: workingFindings})
-			workingFindings = result.Findings
+		results := make([]evaluation.Result, len(observations)-1)
+		start := make(chan struct{})
+		var ready sync.WaitGroup
+		var finished sync.WaitGroup
+		ready.Add(len(results))
+		finished.Add(len(results))
+		for i, observation := range observations[1:] {
+			go func(index int, current domain.TrialObservation) {
+				defer finished.Done()
+				ready.Done()
+				<-start
+				result := s.eval.Evaluate(evaluation.Input{Case: view.Case, Baseline: *view.Baseline, Protocol: protocol, Current: current, History: history, Controls: []domain.TrialObservation{observations[0]}, OpenFindings: workingFindings})
+				workingFindings = result.Findings
+				history = append(history, current)
+				hasCurrentBlockers = hasCurrentBlockers || result.HasBlockers
+				results[index] = result
+			}(i, observation)
+		}
+		ready.Wait()
+		close(start)
+		finished.Wait()
+		for i, result := range results {
 			for _, finding := range result.Findings {
 				if err := tx.UpsertFinding(ctx, finding); err != nil {
 					return "", "", err
@@ -349,9 +369,7 @@ func (s *Service) SubmitPairedObservations(ctx context.Context, caseID string, c
 			if err := tx.InsertSnapshot(ctx, result.Snapshot); err != nil {
 				return "", "", err
 			}
-			snapshots[observation.ZoneID] = result.Snapshot
-			hasCurrentBlockers = hasCurrentBlockers || result.HasBlockers
-			history = append(history, observation)
+			snapshots[observations[i+1].ZoneID] = result.Snapshot
 		}
 		resolved := map[string]bool{}
 		for _, task := range view.Remediations {
