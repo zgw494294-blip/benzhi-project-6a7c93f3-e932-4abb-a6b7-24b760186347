@@ -123,14 +123,14 @@ func (s *Service) IssuePermit(ctx context.Context, caseID string, cmd PermitComm
 	now := s.now()
 	permit := domain.WorkPermit{PermitID: newID("permit"), PermitNumber: fmt.Sprintf("MCG-%s-%s", now.Format("20060102"), strings.ToUpper(newID("")[1:9])), CaseID: caseID, FrozenProtocolRevisionID: view.Manifest.ProtocolRevisionID, EvidenceManifestDigest: view.Manifest.Digest, Scope: cmd.Scope, Restrictions: cmd.Restrictions, IssuedBy: cmd.IssuedBy, IssuedAt: now, ExpiresAt: cmd.ExpiresAt}
 	permit.VerificationDigest = domain.PermitVerificationDigest(permit)
+	if err = s.store.SavePermit(ctx, permit); err != nil {
+		return view, err
+	}
 	tx, err := s.store.Begin(ctx)
 	if err != nil {
 		return view, err
 	}
 	defer tx.Rollback()
-	if err = tx.InsertPermit(ctx, permit); err != nil {
-		return view, err
-	}
 	if err = tx.AdvanceCase(ctx, &view.Case, cmd.ExpectedVersion, domain.StatusPermitted, ""); err != nil {
 		return view, err
 	}

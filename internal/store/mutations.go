@@ -148,6 +148,18 @@ func (t *Tx) InsertPermit(ctx context.Context, value domain.WorkPermit) error {
 	return err
 }
 
+func (s *Store) SavePermit(ctx context.Context, value domain.WorkPermit) error {
+	tx, err := s.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = tx.InsertPermit(ctx, value); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (t *Tx) InsertSelection(ctx context.Context, value domain.CandidateSelection) error {
 	payload, err := encode(value)
 	if err != nil {
