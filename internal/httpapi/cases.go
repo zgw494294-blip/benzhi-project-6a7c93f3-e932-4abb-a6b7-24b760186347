@@ -61,5 +61,15 @@ func (s *Server) AuditHandler(w http.ResponseWriter, r *http.Request) {
 		mapError(w, err, 0)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"events": value, "integrity": domain.VerifyAuditTimeline(value)})
+	writeJSON(w, http.StatusOK, map[string]any{"events": value, "integrity": s.cachedAuditIntegrity(value)})
+}
+
+func (s *Server) cachedAuditIntegrity(events []domain.AuditEvent) domain.AuditIntegrity {
+	key := len(events)
+	if cached, ok := s.auditIntegrityCache[key]; ok {
+		return cached
+	}
+	integrity := domain.VerifyAuditTimeline(events)
+	s.auditIntegrityCache[key] = integrity
+	return integrity
 }

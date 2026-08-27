@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"mural-conservation-gate/internal/domain"
 	"mural-conservation-gate/internal/workflow"
 )
 
@@ -13,12 +14,17 @@ import (
 var webFiles embed.FS
 
 type Server struct {
-	workflow *workflow.Service
-	mux      *http.ServeMux
+	workflow            *workflow.Service
+	mux                 *http.ServeMux
+	auditIntegrityCache map[int]domain.AuditIntegrity
 }
 
 func New(service *workflow.Service) *Server {
-	s := &Server{workflow: service, mux: http.NewServeMux()}
+	s := &Server{
+		workflow:            service,
+		mux:                 http.NewServeMux(),
+		auditIntegrityCache: map[int]domain.AuditIntegrity{},
+	}
 	s.routes()
 	return s
 }
